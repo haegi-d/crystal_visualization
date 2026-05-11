@@ -1,0 +1,58 @@
+# Nature journal style preset.
+# Targets: Nature, Nature Physics, Nature Materials, Nature Communications.
+#
+# Key constraints from Nature figure guidelines:
+# - Single-column figures: 86 mm wide; double-column: 180 mm wide.
+# - Minimum font size: 5 pt; preferred: 7 pt.
+# - White or transparent background required.
+# - Resolution: 300 DPI minimum for line art; 600 DPI for halftone.
+# - Preferred formats: EPS, PDF (vector); TIFF (raster).
+#
+# Color choices: slightly desaturated CPK palette. Full-saturation CPK colors
+# reproduce poorly in print and look garish on a white background. The values
+# below were tuned for a neutral white background at 600 DPI print output.
+
+[figure]
+dpi = 600
+width_mm = 86          # Single-column width per Nature guidelines.
+height_mm = 86
+background = "white"
+
+[atoms.colors]
+H  = "#f0f0f0"
+C  = "#303030"
+N  = "#2545c8"
+O  = "#cc2200"         # Desaturated from pure red for printability.
+F  = "#70b840"
+Si = "#d8b888"
+Y  = "#70cccc"         # Yttrium — muted teal.
+Er = "#00b85a"         # Erbium — darker green, distinct in print.
+La = "#50b4d8"
+Ce = "#d8d890"
+Gd = "#30c878"
+
+[atoms.radii]
+# Slightly larger than default for 86 mm figure width — atoms need to be
+# visible at journal print size.
+H  = 0.22
+C  = 0.33
+N  = 0.30
+O  = 0.28
+F  = 0.26
+Si = 0.36
+Y  = 0.48
+Er = 0.50
+La = 0.52
+Ce = 0.51
+Gd = 0.49
+
+[bonds]
+cutoff_angstrom = 3.2
+color = "#555555"
+linewidth = 0.6        # Thinner bonds for clean look at high DPI.
+
+[annotations]
+# Nature requires minimum 5 pt, recommends 7 pt for readability.
+font_family = "Helvetica Neue"
+font_size = 7
+scale_bar_angstrom = 5

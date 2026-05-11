@@ -1,0 +1,47 @@
+# Default style preset — permissive values for exploration and drafts.
+# Override per-key by copying this file to a new preset name.
+
+[figure]
+dpi = 300
+width_mm = 120
+height_mm = 120
+background = "white"
+
+[atoms.colors]
+# CPK color scheme, standard crystallographic convention.
+H  = "#ffffff"
+C  = "#404040"
+N  = "#3050f8"
+O  = "#ff0d0d"
+F  = "#90e050"
+Si = "#f0c8a0"
+Y  = "#94ffff"      # Yttrium — light cyan
+Er = "#00e675"      # Erbium — bright green (distinct from host)
+La = "#70d4ff"
+Ce = "#ffffc7"
+Gd = "#45ffa0"
+
+[atoms.radii]
+# Van der Waals radii in Å, scaled for figure aesthetics.
+# Reduced ~30% from true VdW to avoid occlusion in cluster views.
+H  = 0.25
+C  = 0.35
+N  = 0.32
+O  = 0.30
+F  = 0.28
+Si = 0.38
+Y  = 0.50
+Er = 0.52
+La = 0.55
+Ce = 0.54
+Gd = 0.51
+
+[bonds]
+cutoff_angstrom = 3.2   # Pairs closer than this receive a bond line.
+color = "#666666"
+linewidth = 0.8         # matplotlib linewidth; Blender tube radius set separately.
+
+[annotations]
+font_family = "Helvetica"
+font_size = 10          # pt; applied to SVG text elements.
+scale_bar_angstrom = 5  # Length of the scale bar indicator.
