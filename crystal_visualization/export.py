@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import io
+
 import cairosvg
 from PIL import Image
 
@@ -32,16 +34,17 @@ def composite(tiff_path: Path, svg_path: Path, output: Path) -> Path:
 
 
 def _composite_to_pdf(tiff_path: Path, svg_path: Path, output: Path) -> None:
-    # Convert SVG annotation to PDF and embed the TIFF as background.
-    # Simple approach: render SVG to PDF; let the consumer merge with the TIFF.
-    # Full compositing requires reportlab or pypdf — deferred to implementation.
-    cairosvg.svg2pdf(url=str(svg_path), write_to=str(output))
+    base = Image.open(tiff_path).convert("RGBA")
+    svg_png = cairosvg.svg2png(url=str(svg_path), output_width=base.width, output_height=base.height)
+    overlay = Image.open(io.BytesIO(svg_png)).convert("RGBA")
+    composited = Image.alpha_composite(base, overlay).convert("RGB")
+    composited.save(str(output), format="PDF", resolution=300)
 
 
 def _composite_to_raster(tiff_path: Path, svg_path: Path, output: Path) -> None:
     base = Image.open(tiff_path).convert("RGBA")
     # Render SVG annotation to PNG at same resolution.
     svg_png = cairosvg.svg2png(url=str(svg_path), output_width=base.width, output_height=base.height)
-    overlay = Image.frombytes("RGBA", base.size, svg_png)
+    overlay = Image.open(io.BytesIO(svg_png)).convert("RGBA")
     composited = Image.alpha_composite(base, overlay)
     composited.save(str(output))

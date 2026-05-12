@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "/Users/dhaegi/dev/phd/crystal_visualization/.venv/bin/blender-mcp"
+    }
+  }
+}

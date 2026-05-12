@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 from ase import Atoms
-from scipy.spatial import KDTree
 
 _STYLES_DIR = Path(__file__).parents[2] / "config" / "styles"
 
@@ -25,6 +24,7 @@ def render(
     camera: str,
     style_name: str,
     output: Path,
+    bonds: list[tuple[int, int]] | None = None,
 ) -> Path:
     """Render an interactive 3D scatter plot.
 
@@ -62,12 +62,9 @@ def render(
     ]
 
     # Draw bond lines as separate Scatter3d traces.
-    bond_cutoff = style.get("bonds", {}).get("cutoff_angstrom", 3.5)
     bond_color = style.get("bonds", {}).get("color", "#888888")
 
-    tree = KDTree(positions)
-    pairs = tree.query_pairs(r=bond_cutoff)
-    for i, j in pairs:
+    for i, j in (bonds or []):
         traces.append(
             go.Scatter3d(
                 x=[positions[i, 0], positions[j, 0], None],

@@ -6,7 +6,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from ase import Atoms
-from scipy.spatial import KDTree
 
 _STYLES_DIR = Path(__file__).parents[2] / "config" / "styles"
 
@@ -47,6 +46,7 @@ def render(
     camera: str,
     style_name: str,
     output: Path,
+    bonds: list[tuple[int, int]] | None = None,
 ) -> Path:
     """Render a 2D projection scatter plot of the cluster to output."""
     style = _load_style(style_name)
@@ -69,13 +69,10 @@ def render(
     x, y = _project(cluster.positions, camera)
 
     # Draw bonds before atoms so atoms render on top.
-    bond_cutoff = style.get("bonds", {}).get("cutoff_angstrom", 3.5)
     bond_color = style.get("bonds", {}).get("color", "#888888")
     bond_lw = style.get("bonds", {}).get("linewidth", 0.8)
 
-    tree = KDTree(np.column_stack([x, y]))
-    pairs = tree.query_pairs(r=bond_cutoff)
-    for i, j in pairs:
+    for i, j in (bonds or []):
         ax.plot([x[i], x[j]], [y[i], y[j]], color=bond_color, lw=bond_lw, zorder=1)
 
     # Draw atoms.

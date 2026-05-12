@@ -37,6 +37,7 @@ def render(
     camera: str,
     style_name: str,
     output: Path,
+    bonds: list[tuple[int, int]] | None = None,
     save_blend: bool = False,
 ) -> Path:
     """Render the cluster with Blender and composite vector annotations.
@@ -71,6 +72,7 @@ def render(
         camera=camera,
         style=style,
         output_tiff=tiff_path,
+        bonds=bonds or [],
         save_blend=blend_path,
     )
 

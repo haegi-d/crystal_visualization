@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
+import numpy as np
 from ase import Atoms
 
 from crystal_visualization import parse, select
@@ -24,8 +25,11 @@ class CrystalRenderer:
     def __init__(self) -> None:
         self._atoms: Atoms | None = None
         self._cluster: Atoms | None = None
+        self._bonds: list[tuple[int, int]] | None = None
         self._center_index: int | None = None
         self._cutoff: float = 5.0
+        self._trim: dict[str, str] | None = None
+        self._cluster_center: int | None = None
         self._camera: CameraView = "isometric"
         self._style: str = "default"
 
@@ -47,12 +51,14 @@ class CrystalRenderer:
         self._center_index = select.find_defect(self._atoms, species, index)
         log.info("Defect: %s[%d] → atom index %d", species, index, self._center_index)
         self._cluster = None
+        self._bonds = None
         return self
 
     def set_neighbor_cutoff(self, angstrom: float) -> "CrystalRenderer":
         """Set the neighbor shell radius in Ångströms."""
         self._cutoff = angstrom
         self._cluster = None
+        self._bonds = None
         return self
 
     def set_camera(self, view: CameraView = "isometric") -> "CrystalRenderer":
@@ -70,6 +76,7 @@ class CrystalRenderer:
         output: str | Path,
         backend: Backend = "matplotlib",
         save_blend: bool = False,
+        trim: dict[str, str] | None = None,
     ) -> Path:
         """Run the full pipeline and write the output figure.
 
@@ -79,21 +86,26 @@ class CrystalRenderer:
                      'blender' for publication-quality final render.
             save_blend: If True and backend='blender', save the .blend scene alongside output.
         """
+        if trim != self._trim:
+            self._trim = trim
+            self._cluster = None
+            self._bonds = None
         self._build_cluster()
         output = Path(output)
 
         if backend == "matplotlib":
             from crystal_visualization.backends.matplotlib import render as mpl_render
-            return mpl_render(self._cluster, self._center_index, self._camera, self._style, output)
+            return mpl_render(self._cluster, self._cluster_center, self._camera, self._style, output, self._bonds)
 
         if backend == "plotly":
             from crystal_visualization.backends.plotly import render as plotly_render
-            return plotly_render(self._cluster, self._center_index, self._camera, self._style, output)
+            return plotly_render(self._cluster, self._cluster_center, self._camera, self._style, output, self._bonds)
 
         if backend == "blender":
             from crystal_visualization.backends.blender import render as blender_render
             return blender_render(
-                self._cluster, self._center_index, self._camera, self._style, output,
+                self._cluster, self._cluster_center, self._camera, self._style, output,
+                bonds=self._bonds,
                 save_blend=save_blend,
             )
 
@@ -109,5 +121,15 @@ class CrystalRenderer:
         if self._center_index is None:
             raise RuntimeError("Call select_defect() first.")
         if self._cluster is None:
-            self._cluster = select.select_cluster(self._atoms, self._center_index, self._cutoff)
-            log.info("Cluster: %d atoms within %.1f Å", len(self._cluster), self._cutoff)
+            cluster = select.select_cluster(self._atoms, self._center_index, self._cutoff)
+            center_pos = self._atoms.positions[self._center_index]
+            local_center = int(np.argmin(np.linalg.norm(cluster.positions - center_pos, axis=1)))
+            bonds = select.get_bonds(cluster)
+            if self._trim:
+                cluster, bonds, local_center = select.filter_by_bonds(
+                    cluster, bonds, local_center, self._trim
+                )
+            self._cluster = cluster
+            self._cluster_center = local_center
+            self._bonds = bonds
+            log.info("Cluster: %d atoms, %d bonds", len(self._cluster), len(self._bonds))
