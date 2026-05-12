@@ -1,0 +1,61 @@
+# Vivid preset — candy-ball atoms, no enclosing box, orbital ring on defect center.
+# Inspired by publication-style crystal diagrams with saturated, glossy spheres.
+
+[figure]
+dpi        = 300
+width_mm   = 120
+height_mm  = 120
+background = "#ffffff"
+
+[atoms.colors]
+H  = "#e0e0f0"
+C  = "#505060"
+N  = "#2255ee"
+O  = "#e8ddd0"     # Light bone — anions recede so host/dopant pop.
+F  = "#66ee22"
+Si = "#eedd99"
+Y  = "#ff7700"     # Vivid orange — host cation, matches left-panel reference.
+Er = "#dd0030"     # Vivid crimson — defect center, the visual focal point.
+La = "#44ccff"
+Ce = "#ffff88"
+Gd = "#22ffaa"
+
+[atoms.radii]
+H  = 0.25
+C  = 0.35
+N  = 0.32
+O  = 0.42
+F  = 0.28
+Si = 0.38
+Y  = 0.75
+Er = 1.00
+La = 0.55
+Ce = 0.54
+Gd = 0.51
+
+[bonds]
+cutoff_angstrom = 3.2
+color           = "#888899"
+linewidth       = 0.8
+tube_radius     = 0.07
+
+[annotations]
+font_family        = "Helvetica"
+font_size          = 10
+scale_bar_angstrom = 5
+arrow_color        = "#cc0022"
+
+[crystal_box]
+enabled = false
+
+[orbital_ring]
+enabled      = true
+color        = "#0077ff"   # Vivid blue metallic ring.
+tube_radius  = 0.07
+ring_radius  = 1.5         # Å beyond the atom surface.
+tilt_deg     = 30          # Tilt from horizontal.
+
+[render]
+candy_atoms    = true      # Subsurface-scattering glossy material on atoms.
+vivid_lighting = true      # Multi-colored studio rig instead of the neutral 3-point.
+samples        = 256
