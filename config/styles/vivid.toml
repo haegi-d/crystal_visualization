@@ -59,3 +59,13 @@ tilt_deg     = 30          # Tilt from horizontal.
 candy_atoms    = true      # Subsurface-scattering glossy material on atoms.
 vivid_lighting = true      # Multi-colored studio rig instead of the neutral 3-point.
 samples        = 256
+
+[nanowire]
+enabled       = true
+color         = "#c8a84b"   # warm gold (Nb)
+show_depth_nm = 3000.0      # total nm of nanowire shown along its long axis
+
+[substrate]
+enabled      = true
+color        = "#a8c8e8"    # light blue (Si wafer)
+thickness_nm = 300.0

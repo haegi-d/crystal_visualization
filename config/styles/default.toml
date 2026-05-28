@@ -56,3 +56,9 @@ roughness       = 0.02        # 0 = mirror-smooth; 0.05 = very slight frost.
 iridescence     = 0.40        # Rainbow edge shimmer intensity (0–1).
 rim_strength    = 0.35        # Brightness of the Fresnel rim glow.
 padding_angstrom = 0.8        # Extra space beyond atom extents on each side.
+
+[nanowire]
+enabled       = false
+
+[substrate]
+enabled       = false

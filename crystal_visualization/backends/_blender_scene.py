@@ -92,6 +92,35 @@ def _make_bond_material(hex_color: str) -> bpy.types.Material:
     return mat
 
 
+def _make_nb_material(hex_color: str) -> bpy.types.Material:
+    """High-reflectivity metallic material for the Nb nanowire."""
+    mat = bpy.data.materials.new(name="nanowire_nb")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    r, g, b = _hex_to_rgb(hex_color)
+    bsdf.inputs["Base Color"].default_value = (r, g, b, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.05
+    _set_input(bsdf, "Metallic", 0.95)
+    _set_input(bsdf, "Anisotropic", 0.3)
+    _set_input(bsdf, "Specular IOR Level", 1.5)
+    _set_input(bsdf, "Specular", 1.0)
+    return mat
+
+
+def _make_si_material(hex_color: str) -> bpy.types.Material:
+    """Polished Si wafer material for the substrate."""
+    mat = bpy.data.materials.new(name="substrate_si")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    r, g, b = _hex_to_rgb(hex_color)
+    bsdf.inputs["Base Color"].default_value = (r, g, b, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.10
+    _set_input(bsdf, "Metallic", 0.0)
+    _set_input(bsdf, "Specular IOR Level", 0.8)
+    _set_input(bsdf, "Specular", 0.8)
+    return mat
+
+
 def _make_liquid_glass_material(box_style: dict) -> bpy.types.Material:
     """Principled BSDF glass with Fresnel rim glow and iridescence.
 
@@ -349,11 +378,125 @@ def _add_orbital_ring(
     return obj
 
 
-def _setup_camera(cluster: Atoms, view: str, has_box: bool = True) -> bpy.types.Object:
-    center = cluster.positions.mean(axis=0)
+def _build_box_mesh(
+    cx: float, cy: float, cz: float,
+    dx: float, dy: float, dz: float,
+    name: str,
+) -> bpy.types.Object:
+    """Create a rectangular box mesh centered at (cx, cy, cz) with given half-extents."""
+    corners = [
+        np.array([cx - dx, cy - dy, cz - dz]),
+        np.array([cx + dx, cy - dy, cz - dz]),
+        np.array([cx - dx, cy + dy, cz - dz]),
+        np.array([cx + dx, cy + dy, cz - dz]),
+        np.array([cx - dx, cy - dy, cz + dz]),
+        np.array([cx + dx, cy - dy, cz + dz]),
+        np.array([cx - dx, cy + dy, cz + dz]),
+        np.array([cx + dx, cy + dy, cz + dz]),
+    ]
+    face_verts = [
+        (0, 2, 3, 1),
+        (4, 5, 7, 6),
+        (0, 1, 5, 4),
+        (2, 6, 7, 3),
+        (0, 4, 6, 2),
+        (1, 3, 7, 5),
+    ]
+    mesh = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    verts = [bm.verts.new(tuple(float(x) for x in c)) for c in corners]
+    bm.verts.ensure_lookup_table()
+    for fi in face_verts:
+        bm.faces.new([verts[i] for i in fi])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.shade_smooth()
+    return obj
+
+
+def _add_nanowire(
+    cluster: Atoms, style: dict
+) -> tuple[bpy.types.Object | None, float]:
+    """Add a Nb nanowire box below the cluster; return (obj, nanowire_bottom_z).
+
+    Dimensions are proportional to the crystal's bounding box, scaled by the
+    ratio of cluster_size_Å / 400 nm so the geometry matches the physical device.
+    The nanowire runs along the Y-axis (long dimension) in the scene.
+    """
+    nw_style = style.get("nanowire", {})
+    cluster_bottom = float(cluster.positions[:, 2].min())
+    if not nw_style.get("enabled", False):
+        return None, cluster_bottom
+
+    crystal_size = float((cluster.positions.max(axis=0) - cluster.positions.min(axis=0)).max())
+    scale = crystal_size / 400.0  # Å per physical nm
+
+    half_t = 80.0 * scale / 2.0      # Z half-thickness (80 nm)
+    half_w = 350.0 * scale / 2.0     # X half-width    (350 nm)
+    show_nm = float(nw_style.get("show_depth_nm", 3000.0))
+    half_l = show_nm * scale / 2.0   # Y half-length
+
+    cx = float(cluster.positions[:, 0].mean())
+    cy = float(cluster.positions[:, 1].mean())
+    center_z = cluster_bottom - half_t
+
+    color_hex = nw_style.get("color", "#c8a84b")
+    obj = _build_box_mesh(cx, cy, center_z, half_w, half_l, half_t, "nanowire")
+    obj.data.materials.append(_make_nb_material(color_hex))
+    return obj, center_z - half_t
+
+
+def _add_substrate(
+    nanowire_bottom_z: float,
+    cx: float,
+    cy: float,
+    crystal_size: float,
+    style: dict,
+) -> bpy.types.Object | None:
+    """Add a Si substrate slab below the nanowire."""
+    sub_style = style.get("substrate", {})
+    if not sub_style.get("enabled", False):
+        return None
+
+    scale = crystal_size / 400.0
+    thickness_nm = float(sub_style.get("thickness_nm", 300.0))
+    half_t = thickness_nm * scale / 2.0
+
+    nw_style = style.get("nanowire", {})
+    show_nm = float(nw_style.get("show_depth_nm", 3000.0))
+    half_l = show_nm * scale / 2.0
+    half_w = 350.0 * scale / 2.0 * 3.0  # substrate 3× wider than nanowire
+
+    center_z = nanowire_bottom_z - half_t
+
+    color_hex = sub_style.get("color", "#a8c8e8")
+    obj = _build_box_mesh(cx, cy, center_z, half_w, half_l, half_t, "substrate_si")
+    obj.data.materials.append(_make_si_material(color_hex))
+    return obj
+
+
+def _setup_camera(
+    cluster: Atoms,
+    view: str,
+    has_box: bool = True,
+    scene_center_override: tuple[float, float, float] | None = None,
+    ortho_scale_override: float | None = None,
+) -> bpy.types.Object:
     pos = cluster.positions
-    extents = (pos.max(axis=0) - pos.min(axis=0)).max()
-    distance = extents * 2.5 + 5.0
+    extents = float((pos.max(axis=0) - pos.min(axis=0)).max())
+
+    if scene_center_override is not None:
+        center = np.array(scene_center_override, dtype=float)
+        ortho = ortho_scale_override if ortho_scale_override is not None else extents * 1.55
+        distance = ortho * 2.0
+    else:
+        center = pos.mean(axis=0)
+        ortho = extents * (1.55 if has_box else 1.20)
+        distance = extents * 2.5 + 5.0
 
     direction = np.array(_VIEW_DIRECTIONS.get(view, _VIEW_DIRECTIONS["isometric"]), dtype=float)
     direction /= np.linalg.norm(direction)
@@ -363,10 +506,9 @@ def _setup_camera(cluster: Atoms, view: str, has_box: bool = True) -> bpy.types.
     cam_obj = bpy.context.object
     cam_obj.name = "cam"
     cam_obj.data.type = "ORTHO"
-    # Tighter framing when there is no box; box needs extra margin.
-    cam_obj.data.ortho_scale = extents * (1.55 if has_box else 1.20)
+    cam_obj.data.ortho_scale = ortho
 
-    direction_vec = mathutils.Vector(cam_location) - mathutils.Vector(tuple(center))
+    direction_vec = mathutils.Vector(tuple(center)) - mathutils.Vector(cam_location)
     rot = direction_vec.to_track_quat("-Z", "Y")
     cam_obj.rotation_euler = rot.to_euler()
 
@@ -512,7 +654,28 @@ def build_and_render(
     ring_style = style.get("orbital_ring", {})
     _add_orbital_ring(center_pos, center_radius, ring_style)
 
-    _setup_camera(cluster, camera, has_box=box_enabled)
+    crystal_size = float((cluster.positions.max(axis=0) - cluster.positions.min(axis=0)).max())
+    cx_scene = float(cluster.positions[:, 0].mean())
+    cy_scene = float(cluster.positions[:, 1].mean())
+    _, nw_bottom = _add_nanowire(cluster, style)
+    _add_substrate(nw_bottom, cx_scene, cy_scene, crystal_size, style)
+
+    nw_style = style.get("nanowire", {})
+    if nw_style.get("enabled", False):
+        scale = crystal_size / 400.0
+        show_nm = float(nw_style.get("show_depth_nm", 3000.0))
+        nw_l = show_nm * scale
+        sub_t = float(style.get("substrate", {}).get("thickness_nm", 300.0)) * scale
+        scene_bot = nw_bottom - sub_t
+        scene_top = float(cluster.positions[:, 2].max())
+        scene_cz = (scene_top + scene_bot) / 2.0
+        _setup_camera(
+            cluster, camera, has_box=box_enabled,
+            scene_center_override=(cx_scene, cy_scene, scene_cz),
+            ortho_scale_override=nw_l * 0.9,
+        )
+    else:
+        _setup_camera(cluster, camera, has_box=box_enabled)
 
     if vivid:
         _setup_vivid_lighting()

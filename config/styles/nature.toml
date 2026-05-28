@@ -56,3 +56,9 @@ linewidth = 0.6        # Thinner bonds for clean look at high DPI.
 font_family = "Helvetica Neue"
 font_size = 7
 scale_bar_angstrom = 5
+
+[nanowire]
+enabled       = false
+
+[substrate]
+enabled       = false
